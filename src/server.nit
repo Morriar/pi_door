@@ -2,6 +2,7 @@ module server
 
 import base
 import socket
+import wiringPi
 
 
 class PiDoorServer
@@ -11,11 +12,13 @@ class PiDoorServer
 
 	# options
 	var opt_port = new OptionString("server port", "-p")
+	var opt_pin = new OptionString("GPIO door pin", "-o")
 
 	init do
+		wiringPi_setup_gpio
 		process_options
 		config = load_config
-		if not config.has_key("port") then
+		if not config.has_key("port") or not config.has_key("pin") then
 			usage
 			exit(1)
 		end
@@ -23,6 +26,7 @@ class PiDoorServer
 
 	redef fun process_options do
 		opt_context.add_option(opt_port)
+		opt_context.add_option(opt_pin)
 		super
 	end
 
@@ -30,11 +34,13 @@ class PiDoorServer
 		var config = super
 		var port = opt_port.value
 		if port != null then config["port"] = port.to_i
+		var pin = opt_pin.value
+		if pin != null then config["pin"] = pin.to_i
 		return config
 	end
 
 	fun usage do
-		print "Usage: server [-p]"
+		print "Usage: server [-pof]"
 		for opt in opt_context.options do print opt.pretty(1)
 	end
 
@@ -95,6 +101,14 @@ class PiDoorServer
 		var user = message["user"].as(String)
 		var address = message["address"].as(String)
 		print "Action {action} required by {user} ({address})"
+
+		if action == "open" then
+			var pin = new RPiPin(config["pin"].as(Int))
+			pin.mode(new RPiPinMode.output_mode)
+			pin.write(true)
+			sys.nanosleep(1, 0)
+			pin.write(false)
+		end
 		return true
 	end
 end
