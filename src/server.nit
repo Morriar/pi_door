@@ -1,39 +1,38 @@
 module server
 
-import opts
+import base
 import socket
 
-class Config
-	var port: Int
-end
 
 class PiDoorServer
-	var config: nullable Config
+	super PiDoorApplication
+
+	var config: PiConfig
 
 	# options
-	var opt_context = new OptionContext
-	var opt_port = new OptionInt("server port", 9898, "-p")
+	var opt_port = new OptionString("server port", "-p")
 
 	init do
-		opt_context.add_option(opt_port)
-		opt_context.parse(args)
-	end
-
-	fun start do
-		if not load_config then
+		process_options
+		config = load_config
+		if not config.has_key("port") then
 			usage
-			return
+			exit(1)
 		end
-
-		listen
 	end
 
-	fun load_config: Bool do
+	redef fun process_options do
+		opt_context.add_option(opt_port)
+		super
+	end
+
+	redef fun load_config do
+		var config = super
 		var port = opt_port.value
-		if port > 0 then
-			config = new Config(port)
+		if port != null then
+			config["port"] = port.to_i
 		end
-		return config != null
+		return config
 	end
 
 	fun usage do
@@ -41,14 +40,15 @@ class PiDoorServer
 		for opt in opt_context.options do print opt.pretty(1)
 	end
 
-	fun listen do
-		var socket = new Socket.stream_with_port(config.port)
-		print "Opening connection on port {config.port}:"
+	fun start do
+		var port = config["port"].as(Int)
+		var socket = new Socket.stream_with_port(port)
+		print "Opening connection on port {port}:"
 
 		printn "Binding..."
 		if not socket.bind then
 			print "\t[KO]"
-			print "Errot: Cannot bind on port {config.port} (maybe this port is already used?)"
+			print "Errot: Cannot bind on port {port} (maybe this port is already used?)"
 			return
 		end
 		print "\t[OK]"
@@ -56,7 +56,7 @@ class PiDoorServer
 		printn "Listening..."
 		if not socket.listen(3) then
 			print "\t[KO]"
-			print "Error: Cannot listen on port {config.port}"
+			print "Error: Cannot listen on port {port}"
 			return
 		end
 		print "\t[OK]"
