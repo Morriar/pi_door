@@ -46,7 +46,6 @@ class PiDoorClient
 	end
 
 	fun request_action(action: String) do
-		var user = config["user"].as(String)
 		var host = config["host"].as(String)
 		var port = config["port"].as(Int)
 		var s = new Socket.stream_with_host(host, port)
@@ -58,9 +57,11 @@ class PiDoorClient
 		end
 		print "\t[OK]"
 
-		var message = "{user}:{action}"
+		var message = new PiMessage
+		message["user"] = config["user"].as(String)
+		message["action"] = action
 		printn "Sending message..."
-		if not s.write(message) then
+		if not s.write(message.to_json) then
 			print "\t[KO]"
 			print "Error: Cannot send message to host"
 			return

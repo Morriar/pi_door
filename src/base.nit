@@ -42,3 +42,18 @@ abstract class PiDoorApplication
 
 end
 
+class PiMessage
+	super HashMap[String, nullable Jsonable]
+
+	init do super
+
+	init from_string(json: String) do
+		init
+		var object = json.json_to_object
+		if object == null then return
+		for k, v in object do
+			self[k] = v
+		end
+	end
+end
+

@@ -29,9 +29,7 @@ class PiDoorServer
 	redef fun load_config do
 		var config = super
 		var port = opt_port.value
-		if port != null then
-			config["port"] = port.to_i
-		end
+		if port != null then config["port"] = port.to_i
 		return config
 	end
 
@@ -78,42 +76,27 @@ class PiDoorServer
 			if fs.readset.is_set(socket) then
 				var ns = socket.accept
 				var string = ns.read
-				var message = parse_message(string, ns.address)
-				if message == null then
-					var error = "Error: Malformed message '{string}'"
+				var message = new PiMessage.from_string(string)
+				message["address"] = ns.address
+				if not do_action(message) then
+					var error = "Error: Unable to do action '{message["action"].as(String)}'"
 					print error
 					ns.write(error)
 					ns.close
-				else
-					if not do_action(message) then
-						var error = "Error: Unable to do action '{message.action}'"
-						print error
-						ns.write(error)
-						ns.close
-					end
-					ns.write("success")
-					ns.close
 				end
+				ns.write("success")
+				ns.close
 			end
 		end
 	end
 
-	fun parse_message(string: String, address: String): nullable Message do
-		var parts = string.split(":")
-		if parts.length < 2 then return null
-		return new Message(parts[0], parts[1], address)
-	end
-
-	fun do_action(message: Message): Bool do
-		print "Action {message.action} required by {message.user} ({message.address})"
+	fun do_action(message: PiMessage): Bool do
+		var action = message["action"].as(String)
+		var user = message["user"].as(String)
+		var address = message["address"].as(String)
+		print "Action {action} required by {user} ({address})"
 		return true
 	end
-end
-
-class Message
-	var user: String
-	var action: String
-	var address: String
 end
 
 var server = new PiDoorServer
